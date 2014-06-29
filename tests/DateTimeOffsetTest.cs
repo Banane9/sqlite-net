@@ -6,73 +6,74 @@ using SetUp = Microsoft.VisualStudio.TestPlatform.UnitTestFramework.TestInitiali
 using TestFixture = Microsoft.VisualStudio.TestPlatform.UnitTestFramework.TestClassAttribute;
 using Test = Microsoft.VisualStudio.TestPlatform.UnitTestFramework.TestMethodAttribute;
 #else
+
 using NUnit.Framework;
+
 #endif
 
 namespace SQLite.Tests
 {
-	[TestFixture]
-	public class DateTimeOffsetTest
-	{
-		class TestObj
-		{
-			[PrimaryKey, AutoIncrement]
-			public int Id { get; set; }
+    [TestFixture]
+    public class DateTimeOffsetTest
+    {
+        [Test]
+        public void AsTicks()
+        {
+            var db = new TestDb();
+            TestDateTimeOffset(db);
+        }
 
-			public string Name { get; set; }
-			public DateTimeOffset ModifiedTime { get; set; }
-		}
+        [Test]
+        public void AsyncAsTicks()
+        {
+            var db = new SQLiteAsyncConnection(TestPath.GetTempFileName());
+            TestAsyncDateTimeOffset(db);
+        }
 
+        private void TestAsyncDateTimeOffset(SQLiteAsyncConnection db)
+        {
+            db.CreateTableAsync<TestObj>().Wait();
 
-		[Test]
-		public void AsTicks ()
-		{
-			var db = new TestDb ();
-			TestDateTimeOffset (db);
-		}
+            TestObj o, o2;
 
+            //
+            // Ticks
+            //
+            o = new TestObj
+            {
+                ModifiedTime = new DateTimeOffset(2012, 1, 14, 3, 2, 1, TimeSpan.Zero),
+            };
+            db.InsertAsync(o).Wait();
+            o2 = db.GetAsync<TestObj>(o.Id).Result;
+            Assert.AreEqual(o.ModifiedTime, o2.ModifiedTime);
+        }
 
-		[Test]
-		public void AsyncAsTicks ()
-		{
-			var db = new SQLiteAsyncConnection (TestPath.GetTempFileName ());
-			TestAsyncDateTimeOffset (db);
-		}
+        private void TestDateTimeOffset(TestDb db)
+        {
+            db.CreateTable<TestObj>();
 
-		void TestAsyncDateTimeOffset (SQLiteAsyncConnection db)
-		{
-			db.CreateTableAsync<TestObj> ().Wait ();
+            TestObj o, o2;
 
-			TestObj o, o2;
+            //
+            // Ticks
+            //
+            o = new TestObj
+            {
+                ModifiedTime = new DateTimeOffset(2012, 1, 14, 3, 2, 1, TimeSpan.Zero),
+            };
+            db.Insert(o);
+            o2 = db.Get<TestObj>(o.Id);
+            Assert.AreEqual(o.ModifiedTime, o2.ModifiedTime);
+        }
 
-			//
-			// Ticks
-			//
-			o = new TestObj {
-                ModifiedTime = new DateTimeOffset (2012, 1, 14, 3, 2, 1, TimeSpan.Zero),
-			};
-			db.InsertAsync (o).Wait ();
-			o2 = db.GetAsync<TestObj> (o.Id).Result;
-			Assert.AreEqual (o.ModifiedTime, o2.ModifiedTime);
-		}
+        private class TestObj
+        {
+            [PrimaryKey, AutoIncrement]
+            public int Id { get; set; }
 
-		void TestDateTimeOffset (TestDb db)
-		{
-			db.CreateTable<TestObj> ();
+            public DateTimeOffset ModifiedTime { get; set; }
 
-			TestObj o, o2;
-
-			//
-			// Ticks
-			//
-			o = new TestObj {
-				ModifiedTime = new DateTimeOffset (2012, 1, 14, 3, 2, 1, TimeSpan.Zero),
-			};
-			db.Insert (o);
-			o2 = db.Get<TestObj> (o.Id);
-			Assert.AreEqual (o.ModifiedTime, o2.ModifiedTime);
-		}
-
-	}
+            public string Name { get; set; }
+        }
+    }
 }
-

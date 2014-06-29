@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Linq.Expressions;
 
 #if NETFX_CORE
 using Microsoft.VisualStudio.TestPlatform.UnitTestFramework;
@@ -9,7 +8,9 @@ using SetUp = Microsoft.VisualStudio.TestPlatform.UnitTestFramework.TestInitiali
 using TestFixture = Microsoft.VisualStudio.TestPlatform.UnitTestFramework.TestClassAttribute;
 using Test = Microsoft.VisualStudio.TestPlatform.UnitTestFramework.TestMethodAttribute;
 #else
+
 using NUnit.Framework;
+
 #endif
 
 namespace SQLite.Tests
@@ -17,70 +18,6 @@ namespace SQLite.Tests
     [TestFixture]
     public class CreateTableImplicitTest
     {
-
-        class NoAttributes
-        {
-            public int Id { get; set; }
-            public string AColumn { get; set; }
-            public int IndexedId { get; set; }
-        }
-
-        class PkAttribute
-        {
-            [PrimaryKey]
-            public int Id { get; set; }
-            public string AColumn { get; set; }
-            public int IndexedId { get; set; }
-        }
-
-        private void CheckPK(TestDb db)
-        {
-            for (int i = 1; i <= 10; i++)
-            {
-                var na = new NoAttributes { Id = i, AColumn = i.ToString(), IndexedId = 0 };
-                db.Insert(na);
-            }
-            var item = db.Get<NoAttributes>(2);
-            Assert.IsNotNull(item);
-            Assert.AreEqual(2, item.Id);
-        }
-
-		[Test, ExpectedException (typeof(AssertionException))]
-        public void WithoutImplicitMapping ()
-        {
-            var db = new TestDb ();
-
-            db.CreateTable<NoAttributes>();
-
-            var mapping = db.GetMapping<NoAttributes>();
-
-            Assert.IsNull (mapping.PK);
-
-            var column = mapping.Columns[2];
-            Assert.AreEqual("IndexedId", column.Name);
-            Assert.IsFalse(column.Indices.Any());
-
-            CheckPK(db);
-        }
-
-        [Test]
-        public void ImplicitPK()
-        {
-            var db = new TestDb();
-
-            db.CreateTable<NoAttributes>(CreateFlags.ImplicitPK);
-
-            var mapping = db.GetMapping<NoAttributes>();
-
-            Assert.IsNotNull(mapping.PK);
-            Assert.AreEqual("Id", mapping.PK.Name);
-            Assert.IsTrue(mapping.PK.IsPK);
-            Assert.IsFalse(mapping.PK.IsAutoInc);
-
-            CheckPK(db);
-        }
-
-
         [Test]
         public void ImplicitAutoInc()
         {
@@ -89,34 +26,6 @@ namespace SQLite.Tests
             db.CreateTable<PkAttribute>(CreateFlags.AutoIncPK);
 
             var mapping = db.GetMapping<PkAttribute>();
-
-            Assert.IsNotNull(mapping.PK);
-            Assert.AreEqual("Id", mapping.PK.Name);
-            Assert.IsTrue(mapping.PK.IsPK);
-            Assert.IsTrue(mapping.PK.IsAutoInc);
-        }
-
-        [Test]
-        public void ImplicitIndex()
-        {
-            var db = new TestDb();
-
-            db.CreateTable<NoAttributes>(CreateFlags.ImplicitIndex);
-
-            var mapping = db.GetMapping<NoAttributes>();
-            var column = mapping.Columns[2];
-            Assert.AreEqual("IndexedId", column.Name);
-            Assert.IsTrue(column.Indices.Any());
-        }
-
-        [Test]
-        public void ImplicitPKAutoInc()
-        {
-            var db = new TestDb();
-
-            db.CreateTable(typeof(NoAttributes), CreateFlags.ImplicitPK | CreateFlags.AutoIncPK);
-
-            var mapping = db.GetMapping<NoAttributes>();
 
             Assert.IsNotNull(mapping.PK);
             Assert.AreEqual("Id", mapping.PK.Name);
@@ -140,6 +49,36 @@ namespace SQLite.Tests
         }
 
         [Test]
+        public void ImplicitIndex()
+        {
+            var db = new TestDb();
+
+            db.CreateTable<NoAttributes>(CreateFlags.ImplicitIndex);
+
+            var mapping = db.GetMapping<NoAttributes>();
+            var column = mapping.Columns[2];
+            Assert.AreEqual("IndexedId", column.Name);
+            Assert.IsTrue(column.Indices.Any());
+        }
+
+        [Test]
+        public void ImplicitPK()
+        {
+            var db = new TestDb();
+
+            db.CreateTable<NoAttributes>(CreateFlags.ImplicitPK);
+
+            var mapping = db.GetMapping<NoAttributes>();
+
+            Assert.IsNotNull(mapping.PK);
+            Assert.AreEqual("Id", mapping.PK.Name);
+            Assert.IsTrue(mapping.PK.IsPK);
+            Assert.IsFalse(mapping.PK.IsAutoInc);
+
+            CheckPK(db);
+        }
+
+        [Test]
         public void ImplicitPkAsPassedInTypes()
         {
             var db = new TestDb();
@@ -152,6 +91,21 @@ namespace SQLite.Tests
             Assert.AreEqual("Id", mapping.PK.Name);
             Assert.IsTrue(mapping.PK.IsPK);
             Assert.IsFalse(mapping.PK.IsAutoInc);
+        }
+
+        [Test]
+        public void ImplicitPKAutoInc()
+        {
+            var db = new TestDb();
+
+            db.CreateTable(typeof(NoAttributes), CreateFlags.ImplicitPK | CreateFlags.AutoIncPK);
+
+            var mapping = db.GetMapping<NoAttributes>();
+
+            Assert.IsNotNull(mapping.PK);
+            Assert.AreEqual("Id", mapping.PK.Name);
+            Assert.IsTrue(mapping.PK.IsPK);
+            Assert.IsTrue(mapping.PK.IsAutoInc);
         }
 
         [Test]
@@ -168,6 +122,54 @@ namespace SQLite.Tests
             Assert.IsTrue(mapping.PK.IsPK);
             Assert.IsTrue(mapping.PK.IsAutoInc);
         }
+
+        [Test, ExpectedException(typeof(AssertionException))]
+        public void WithoutImplicitMapping()
+        {
+            var db = new TestDb();
+
+            db.CreateTable<NoAttributes>();
+
+            var mapping = db.GetMapping<NoAttributes>();
+
+            Assert.IsNull(mapping.PK);
+
+            var column = mapping.Columns[2];
+            Assert.AreEqual("IndexedId", column.Name);
+            Assert.IsFalse(column.Indices.Any());
+
+            CheckPK(db);
+        }
+
+        private void CheckPK(TestDb db)
+        {
+            for (int i = 1; i <= 10; i++)
+            {
+                var na = new NoAttributes { Id = i, AColumn = i.ToString(), IndexedId = 0 };
+                db.Insert(na);
+            }
+            var item = db.Get<NoAttributes>(2);
+            Assert.IsNotNull(item);
+            Assert.AreEqual(2, item.Id);
+        }
+
+        private class NoAttributes
+        {
+            public string AColumn { get; set; }
+
+            public int Id { get; set; }
+
+            public int IndexedId { get; set; }
+        }
+
+        private class PkAttribute
+        {
+            public string AColumn { get; set; }
+
+            [PrimaryKey]
+            public int Id { get; set; }
+
+            public int IndexedId { get; set; }
+        }
     }
 }
-

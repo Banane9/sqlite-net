@@ -7,44 +7,45 @@ using SetUp = Microsoft.VisualStudio.TestPlatform.UnitTestFramework.TestInitiali
 using TestFixture = Microsoft.VisualStudio.TestPlatform.UnitTestFramework.TestClassAttribute;
 using Test = Microsoft.VisualStudio.TestPlatform.UnitTestFramework.TestMethodAttribute;
 #else
+
 using NUnit.Framework;
+
 #endif
 
 namespace SQLite.Tests
 {
-	[TestFixture]
-	public class ScalarTest
-	{
-		class TestTable
-		{
-			[PrimaryKey, AutoIncrement]
-			public int Id { get; set; }
-			public int Two { get; set; }
-		}
+    [TestFixture]
+    public class ScalarTest
+    {
+        private const int Count = 100;
 
-		const int Count = 100;
+        [Test]
+        public void Int32()
+        {
+            var db = CreateDb();
 
-		SQLiteConnection CreateDb ()
-		{
-			var db = new TestDb ();
-			db.CreateTable<TestTable> ();
-			var items = from i in Enumerable.Range (0, Count)
-				select new TestTable { Two = 2 };
-			db.InsertAll (items);
-			Assert.AreEqual (Count, db.Table<TestTable> ().Count ());
-			return db;
-		}
+            var r = db.ExecuteScalar<int>("SELECT SUM(Two) FROM TestTable");
 
+            Assert.AreEqual(Count * 2, r);
+        }
 
-		[Test]
-		public void Int32 ()
-		{
-			var db = CreateDb ();
-			
-			var r = db.ExecuteScalar<int> ("SELECT SUM(Two) FROM TestTable");
+        private SQLiteConnection CreateDb()
+        {
+            var db = new TestDb();
+            db.CreateTable<TestTable>();
+            var items = from i in Enumerable.Range(0, Count)
+                        select new TestTable { Two = 2 };
+            db.InsertAll(items);
+            Assert.AreEqual(Count, db.Table<TestTable>().Count());
+            return db;
+        }
 
-			Assert.AreEqual (Count * 2, r);
-		}
-	}
+        private class TestTable
+        {
+            [PrimaryKey, AutoIncrement]
+            public int Id { get; set; }
+
+            public int Two { get; set; }
+        }
+    }
 }
-

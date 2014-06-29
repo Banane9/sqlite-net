@@ -6,85 +6,88 @@ using SetUp = Microsoft.VisualStudio.TestPlatform.UnitTestFramework.TestInitiali
 using TestFixture = Microsoft.VisualStudio.TestPlatform.UnitTestFramework.TestClassAttribute;
 using Test = Microsoft.VisualStudio.TestPlatform.UnitTestFramework.TestMethodAttribute;
 #else
+
 using NUnit.Framework;
+
 #endif
 
 namespace SQLite.Tests
 {
-	[TestFixture]
-	public class DateTimeTest
-	{
-		class TestObj
-		{
-			[PrimaryKey, AutoIncrement]
-			public int Id { get; set; }
+    [TestFixture]
+    public class DateTimeTest
+    {
+        [Test]
+        public void AsStrings()
+        {
+            var db = new TestDb(storeDateTimeAsTicks: false);
+            TestDateTime(db);
+        }
 
-			public string Name { get; set; }
-			public DateTime ModifiedTime { get; set; }
-		}
+        [Test]
+        public void AsTicks()
+        {
+            var db = new TestDb(storeDateTimeAsTicks: true);
+            TestDateTime(db);
+        }
 
+        [Test]
+        public void AsyncAsString()
+        {
+            var db = new SQLiteAsyncConnection(TestPath.GetTempFileName(), false);
+            TestAsyncDateTime(db);
+        }
 
-		[Test]
-		public void AsTicks ()
-		{
-			var db = new TestDb (storeDateTimeAsTicks: true);
-			TestDateTime (db);
-		}
+        [Test]
+        public void AsyncAsTicks()
+        {
+            var db = new SQLiteAsyncConnection(TestPath.GetTempFileName(), true);
+            TestAsyncDateTime(db);
+        }
 
-		[Test]
-		public void AsStrings ()
-		{
-			var db = new TestDb (storeDateTimeAsTicks: false);			
-			TestDateTime (db);
-		}
+        private void TestAsyncDateTime(SQLiteAsyncConnection db)
+        {
+            db.CreateTableAsync<TestObj>().Wait();
 
-		[Test]
-		public void AsyncAsTicks ()
-		{
-			var db = new SQLiteAsyncConnection (TestPath.GetTempFileName (), true);
-			TestAsyncDateTime (db);
-		}
+            TestObj o, o2;
 
-		[Test]
-		public void AsyncAsString ()
-		{
-			var db = new SQLiteAsyncConnection (TestPath.GetTempFileName (), false);
-			TestAsyncDateTime (db);
-		}
+            //
+            // Ticks
+            //
+            o = new TestObj
+            {
+                ModifiedTime = new DateTime(2012, 1, 14, 3, 2, 1),
+            };
+            db.InsertAsync(o).Wait();
+            o2 = db.GetAsync<TestObj>(o.Id).Result;
+            Assert.AreEqual(o.ModifiedTime, o2.ModifiedTime);
+        }
 
-		void TestAsyncDateTime (SQLiteAsyncConnection db)
-		{
-			db.CreateTableAsync<TestObj> ().Wait ();
+        private void TestDateTime(TestDb db)
+        {
+            db.CreateTable<TestObj>();
 
-			TestObj o, o2;
+            TestObj o, o2;
 
-			//
-			// Ticks
-			//
-			o = new TestObj {
-				ModifiedTime = new DateTime (2012, 1, 14, 3, 2, 1),
-			};
-			db.InsertAsync (o).Wait ();
-			o2 = db.GetAsync<TestObj> (o.Id).Result;
-			Assert.AreEqual (o.ModifiedTime, o2.ModifiedTime);
-		}
+            //
+            // Ticks
+            //
+            o = new TestObj
+            {
+                ModifiedTime = new DateTime(2012, 1, 14, 3, 2, 1),
+            };
+            db.Insert(o);
+            o2 = db.Get<TestObj>(o.Id);
+            Assert.AreEqual(o.ModifiedTime, o2.ModifiedTime);
+        }
 
-		void TestDateTime (TestDb db)
-		{
-			db.CreateTable<TestObj> ();
+        private class TestObj
+        {
+            [PrimaryKey, AutoIncrement]
+            public int Id { get; set; }
 
-			TestObj o, o2;
+            public DateTime ModifiedTime { get; set; }
 
-			//
-			// Ticks
-			//
-			o = new TestObj {
-				ModifiedTime = new DateTime (2012, 1, 14, 3, 2, 1),
-			};
-			db.Insert (o);
-			o2 = db.Get<TestObj> (o.Id);
-			Assert.AreEqual (o.ModifiedTime, o2.ModifiedTime);
-		}
-	}
+            public string Name { get; set; }
+        }
+    }
 }
-

@@ -7,68 +7,68 @@ using SetUp = Microsoft.VisualStudio.TestPlatform.UnitTestFramework.TestInitiali
 using TestFixture = Microsoft.VisualStudio.TestPlatform.UnitTestFramework.TestClassAttribute;
 using Test = Microsoft.VisualStudio.TestPlatform.UnitTestFramework.TestMethodAttribute;
 #else
+
 using NUnit.Framework;
+
 #endif
 
 namespace SQLite.Tests
 {
-	[TestFixture]
-	public class MappingTest
-	{
-		[Table ("AGoodTableName")]
-		class AFunnyTableName
-		{
-			[PrimaryKey]
-			public int Id { get; set; }
+    [TestFixture]
+    public class MappingTest
+    {
+        [Test]
+        public void HasGoodNames()
+        {
+            var db = new TestDb();
 
-			[Column ("AGoodColumnName")]
-			public string AFunnyColumnName { get; set; }
-		}
+            db.CreateTable<AFunnyTableName>();
 
+            var mapping = db.GetMapping<AFunnyTableName>();
 
-		[Test]
-		public void HasGoodNames ()
-		{
-			var db = new TestDb ();
-			
-			db.CreateTable<AFunnyTableName> ();
+            Assert.AreEqual("AGoodTableName", mapping.TableName);
 
-			var mapping = db.GetMapping<AFunnyTableName> ();
+            Assert.AreEqual("AGoodColumnName", mapping.Columns[0].Name);
+            Assert.AreEqual("Id", mapping.Columns[1].Name);
+        }
 
-			Assert.AreEqual ("AGoodTableName", mapping.TableName);
+        [Table("AGoodTableName")]
+        private class AFunnyTableName
+        {
+            [Column("AGoodColumnName")]
+            public string AFunnyColumnName { get; set; }
 
-			Assert.AreEqual ("Id", mapping.Columns [0].Name);
-			Assert.AreEqual ("AGoodColumnName", mapping.Columns [1].Name);
-		}
+            [PrimaryKey]
+            public int Id { get; set; }
+        }
 
-		#region Issue #86
+        #region Issue #86
 
-		[Table("foo")]
-		public class Foo
-		{
-		    [Column("baz")]
-		    public int Bar { get; set; }
-		}
+        [Test]
+        public void Issue86()
+        {
+            var db = new TestDb();
+            db.CreateTable<Foo>();
 
-		[Test]
-		public void Issue86 ()
-		{
-			var db = new TestDb ();
-			db.CreateTable<Foo> ();
+            db.Insert(new Foo { Bar = 42 });
+            db.Insert(new Foo { Bar = 69 });
 
-			db.Insert (new Foo { Bar = 42 } );
-			db.Insert (new Foo { Bar = 69 } );
+            var found42 = db.Table<Foo>().Where(f => f.Bar == 42).FirstOrDefault();
+            Assert.IsNotNull(found42);
 
-			var found42 = db.Table<Foo> ().Where (f => f.Bar == 42).FirstOrDefault();
-			Assert.IsNotNull (found42);
+            var ordered = new List<Foo>(db.Table<Foo>().OrderByDescending(f => f.Bar));
+            Assert.AreEqual(2, ordered.Count);
+            Assert.AreEqual(69, ordered[0].Bar);
+            Assert.AreEqual(42, ordered[1].Bar);
+        }
 
-			var ordered = new List<Foo>(db.Table<Foo>().OrderByDescending(f => f.Bar));
-			Assert.AreEqual(2, ordered.Count);
-			Assert.AreEqual(69, ordered[0].Bar);
-			Assert.AreEqual(42, ordered[1].Bar);
-		}
+        [Table("foo")]
+        public class Foo
+        {
+            [Column("baz")]
+            public int Bar { get; set; }
+        }
 
-		#endregion
-	}
+        #endregion Issue #86
+    }
 }
-

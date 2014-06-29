@@ -9,118 +9,133 @@ using TearDown = Microsoft.VisualStudio.TestPlatform.UnitTestFramework.TestClean
 using TestFixture = Microsoft.VisualStudio.TestPlatform.UnitTestFramework.TestClassAttribute;
 using Test = Microsoft.VisualStudio.TestPlatform.UnitTestFramework.TestMethodAttribute;
 #else
+
 using NUnit.Framework;
+
 #endif
 
 namespace SQLite.Tests
 {
-	[TestFixture]
-	public class TransactionTest
-	{
-		private TestDb db;
-		private List<TestObj> testObjects;
+    [TestFixture]
+    public class TransactionTest
+    {
+        private TestDb db;
+        private List<TestObj> testObjects;
 
-		public class TestObj
-		{
-			[AutoIncrement, PrimaryKey]
-			public int Id { get; set; }
+        [Test]
+        public void FailNestedSavepointTransaction()
+        {
+            try
+            {
+                db.RunInTransaction(() =>
+                {
+                    db.Delete(testObjects[0]);
 
-			public override string ToString()
-			{
-				return string.Format("[TestObj: Id={0}]", Id);
-			}
-		}
+                    db.RunInTransaction(() =>
+                    {
+                        db.Delete(testObjects[1]);
 
-		public class TransactionTestException : Exception
-		{
-		}
+                        throw new TransactionTestException();
+                    });
+                });
+            }
+            catch (TransactionTestException)
+            {
+                // ignore
+            }
 
-		public class TestDb : SQLiteConnection
-		{
-			public TestDb(String path) : base(path)
-			{
-				CreateTable<TestObj>();
-			}
-		}
+            Assert.AreEqual(testObjects.Count, db.Table<TestObj>().Count());
+        }
 
-		[SetUp]
-		public void Setup()
-		{
-			testObjects = Enumerable.Range(1, 20).Select(i => new TestObj()).ToList();
+        [Test]
+        public void FailSavepointTransaction()
+        {
+            try
+            {
+                db.RunInTransaction(() =>
+                {
+                    db.Delete(testObjects[0]);
 
-			db = new TestDb(TestPath.GetTempFileName());
-			db.InsertAll(testObjects);
-		}
+                    throw new TransactionTestException();
+                });
+            }
+            catch (TransactionTestException)
+            {
+                // ignore
+            }
 
-		[TearDown]
-		public void TearDown()
-		{
-			if (db != null) {
-				db.Close();
-			}
-		}
+            Assert.AreEqual(testObjects.Count, db.Table<TestObj>().Count());
+        }
 
-		[Test]
-		public void SuccessfulSavepointTransaction()
-		{
-			db.RunInTransaction(() => {
-				db.Delete(testObjects[0]);
-				db.Delete(testObjects[1]);
-				db.Insert(new TestObj());
-			});
+        [SetUp]
+        public void Setup()
+        {
+            testObjects = Enumerable.Range(1, 20).Select(i => new TestObj()).ToList();
 
-			Assert.AreEqual(testObjects.Count - 1, db.Table<TestObj>().Count());
-		}
+            db = new TestDb(TestPath.GetTempFileName());
+            db.InsertAll(testObjects);
+        }
 
-		[Test]
-		public void FailSavepointTransaction()
-		{
-			try {
-				db.RunInTransaction(() => {
-					db.Delete(testObjects[0]);
+        [Test]
+        public void SuccessfulNestedSavepointTransaction()
+        {
+            db.RunInTransaction(() =>
+            {
+                db.Delete(testObjects[0]);
 
-					throw new TransactionTestException();
-				});
-			} catch (TransactionTestException) {
-				// ignore
-			}
+                db.RunInTransaction(() =>
+                {
+                    db.Delete(testObjects[1]);
+                });
+            });
 
-			Assert.AreEqual(testObjects.Count, db.Table<TestObj>().Count());
-		}
+            Assert.AreEqual(testObjects.Count - 2, db.Table<TestObj>().Count());
+        }
 
-		[Test]
-		public void SuccessfulNestedSavepointTransaction()
-		{
-			db.RunInTransaction(() => {
-				db.Delete(testObjects[0]);
+        [Test]
+        public void SuccessfulSavepointTransaction()
+        {
+            db.RunInTransaction(() =>
+            {
+                db.Delete(testObjects[0]);
+                db.Delete(testObjects[1]);
+                db.Insert(new TestObj());
+            });
 
-				db.RunInTransaction(() => {
-					db.Delete(testObjects[1]);
-				});
-			});
+            Assert.AreEqual(testObjects.Count - 1, db.Table<TestObj>().Count());
+        }
 
-			Assert.AreEqual(testObjects.Count - 2, db.Table<TestObj>().Count());
-		}
+        [TearDown]
+        public void TearDown()
+        {
+            if (db != null)
+            {
+                db.Close();
+            }
+        }
 
-		[Test]
-		public void FailNestedSavepointTransaction()
-		{
-			try {
-				db.RunInTransaction(() => {
-					db.Delete(testObjects[0]);
+        public class TestDb : SQLiteConnection
+        {
+            public TestDb(String path)
+                : base(path)
+            {
+                CreateTable<TestObj>();
+            }
+        }
 
-					db.RunInTransaction(() => {
-						db.Delete(testObjects[1]);
+        public class TestObj
+        {
+            [AutoIncrement, PrimaryKey]
+            public int Id { get; set; }
 
-						throw new TransactionTestException();
-					});
-				});
-			} catch (TransactionTestException) {
-				// ignore
-			}
+            public override string ToString()
+            {
+                return string.Format("[TestObj: Id={0}]", Id);
+            }
+        }
 
-			Assert.AreEqual(testObjects.Count, db.Table<TestObj>().Count());
-		}
-	}
+        public class TransactionTestException : Exception
+        {
+        }
+    }
 }
-

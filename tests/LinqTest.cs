@@ -8,180 +8,198 @@ using SetUp = Microsoft.VisualStudio.TestPlatform.UnitTestFramework.TestInitiali
 using TestFixture = Microsoft.VisualStudio.TestPlatform.UnitTestFramework.TestClassAttribute;
 using Test = Microsoft.VisualStudio.TestPlatform.UnitTestFramework.TestMethodAttribute;
 #else
+
 using NUnit.Framework;
+
 #endif
 
 namespace SQLite.Tests
 {
-	[TestFixture]
-	public class LinqTest
-	{
-		TestDb CreateDb ()
-		{
-			var db = new TestDb ();
-			db.CreateTable<Product> ();
-			db.CreateTable<Order> ();
-			db.CreateTable<OrderLine> ();
-			db.CreateTable<OrderHistory> ();
-			return db;
-		}
-		
-		[Test]
-		public void FunctionParameter ()
-		{
-			var db = CreateDb ();
-			
-			db.Insert (new Product {
-				Name = "A",
-				Price = 20,
-			});
-			
-			db.Insert (new Product {
-				Name = "B",
-				Price = 10,
-			});
-			
-			Func<decimal, List<Product>> GetProductsWithPriceAtLeast = delegate(decimal val) {
-				return (from p in db.Table<Product> () where p.Price > val select p).ToList ();
-			}; 
-			
-			var r = GetProductsWithPriceAtLeast (15);
-			Assert.AreEqual (1, r.Count);
-			Assert.AreEqual ("A", r [0].Name);
-		}
-		
-		[Test]
-		public void WhereGreaterThan ()
-		{
-			var db = CreateDb ();
-			
-			db.Insert (new Product {
-				Name = "A",
-				Price = 20,
-			});
-			
-			db.Insert (new Product {
-				Name = "B",
-				Price = 10,
-			});
-			
-			Assert.AreEqual (2, db.Table<Product> ().Count ());
-			
-			var r = (from p in db.Table<Product> () where p.Price > 15 select p).ToList ();
-			Assert.AreEqual (1, r.Count);
-			Assert.AreEqual ("A", r [0].Name);
-		}
-		
-		[Test]
-        public void GetWithExpression ()
-		{
-			var db = CreateDb();
-			
-			db.Insert (new Product {
-				Name = "A",
-				Price = 20,
-			});
-			
-			db.Insert (new Product {
-				Name = "B",
-				Price = 10,
-			});
+    [TestFixture]
+    public class LinqTest
+    {
+        [Test]
+        public void FindWithExpression()
+        {
+            var db = CreateDb();
+
+            var r = db.Find<Product>(x => x.Price == 10);
+            Assert.IsNull(r);
+        }
+
+        [Test]
+        public void FunctionParameter()
+        {
+            var db = CreateDb();
+
+            db.Insert(new Product
+            {
+                Name = "A",
+                Price = 20,
+            });
+
+            db.Insert(new Product
+            {
+                Name = "B",
+                Price = 10,
+            });
+
+            Func<decimal, List<Product>> GetProductsWithPriceAtLeast = delegate(decimal val)
+            {
+                return (from p in db.Table<Product>() where p.Price > val select p).ToList();
+            };
+
+            var r = GetProductsWithPriceAtLeast(15);
+            Assert.AreEqual(1, r.Count);
+            Assert.AreEqual("A", r[0].Name);
+        }
+
+        [Test]
+        public void GetWithExpression()
+        {
+            var db = CreateDb();
+
+            db.Insert(new Product
+            {
+                Name = "A",
+                Price = 20,
+            });
+
+            db.Insert(new Product
+            {
+                Name = "B",
+                Price = 10,
+            });
 
             db.Insert(new Product
             {
                 Name = "C",
                 Price = 5,
             });
-			
-			Assert.AreEqual (3, db.Table<Product> ().Count ());
-			
-			var r = db.Get<Product>(x => x.Price == 10);
+
+            Assert.AreEqual(3, db.Table<Product>().Count());
+
+            var r = db.Get<Product>(x => x.Price == 10);
             Assert.IsNotNull(r);
-			Assert.AreEqual ("B", r.Name);
-		}
-		
-		[Test]
-        public void FindWithExpression ()
-		{
-			var db = CreateDb();
-			
-			var r = db.Find<Product> (x => x.Price == 10);
-            Assert.IsNull (r);
-		}
+            Assert.AreEqual("B", r.Name);
+        }
 
-		[Test]
-		public void OrderByCast ()
-		{
-			var db = CreateDb();
+        [Test]
+        public void Issue96_NullabelIntsInQueries()
+        {
+            var db = CreateDb();
+            db.CreateTable<Issue96_A>();
 
-			db.Insert (new Product {
-				Name = "A",
-				TotalSales = 1,
-			});
-			db.Insert (new Product {
-				Name = "B",
-				TotalSales = 100,
-			});
+            var id = 42;
 
-			var nocast = (from p in db.Table<Product> () orderby p.TotalSales descending select p).ToList ();
-			Assert.AreEqual (2, nocast.Count);
-			Assert.AreEqual ("B", nocast [0].Name);
+            db.Insert(new Issue96_A
+            {
+                ClassB = id,
+            });
+            db.Insert(new Issue96_A
+            {
+                ClassB = null,
+            });
+            db.Insert(new Issue96_A
+            {
+                ClassB = null,
+            });
+            db.Insert(new Issue96_A
+            {
+                ClassB = null,
+            });
 
-			var cast = (from p in db.Table<Product> () orderby (int)p.TotalSales descending select p).ToList ();
-			Assert.AreEqual (2, cast.Count);
-			Assert.AreEqual ("B", cast [0].Name);			
-		}
+            Assert.AreEqual(1, db.Table<Issue96_A>().Where(p => p.ClassB == id).Count());
+            Assert.AreEqual(3, db.Table<Issue96_A>().Where(p => p.ClassB == null).Count());
+        }
 
-		public class Issue96_A
-		{
-			[ AutoIncrement, PrimaryKey]
-			public int ID { get; set; }
-			public string AddressLine { get; set; }
-			
-			[Indexed]
-			public int? ClassB { get; set; }
-			[Indexed]
-			public int? ClassC { get; set; }
-		}
-		
-		public class Issue96_B
-		{
-			[ AutoIncrement, PrimaryKey]
-			public int ID { get; set; }
-			public string CustomerName { get; set; }
-		}
-		
-		public class Issue96_C
-		{
-			[ AutoIncrement, PrimaryKey]
-			public int ID { get; set; }
-			public string SupplierName { get; set; }
-		}
+        [Test]
+        public void OrderByCast()
+        {
+            var db = CreateDb();
 
-		[Test]
-		public void Issue96_NullabelIntsInQueries ()
-		{
-			var db = CreateDb();
-			db.CreateTable<Issue96_A> ();
+            db.Insert(new Product
+            {
+                Name = "A",
+                TotalSales = 1,
+            });
+            db.Insert(new Product
+            {
+                Name = "B",
+                TotalSales = 100,
+            });
 
-			var id = 42;
+            var nocast = (from p in db.Table<Product>() orderby p.TotalSales descending select p).ToList();
+            Assert.AreEqual(2, nocast.Count);
+            Assert.AreEqual("B", nocast[0].Name);
 
-			db.Insert (new Issue96_A {
-				ClassB = id,
-			});
-			db.Insert (new Issue96_A {
-				ClassB = null,
-			});
-			db.Insert (new Issue96_A {
-				ClassB = null,
-			});
-			db.Insert (new Issue96_A {
-				ClassB = null,
-			});
+            var cast = (from p in db.Table<Product>() orderby (int)p.TotalSales descending select p).ToList();
+            Assert.AreEqual(2, cast.Count);
+            Assert.AreEqual("B", cast[0].Name);
+        }
 
+        [Test]
+        public void WhereGreaterThan()
+        {
+            var db = CreateDb();
 
-			Assert.AreEqual (1, db.Table<Issue96_A>().Where(p => p.ClassB == id).Count ());
-			Assert.AreEqual (3, db.Table<Issue96_A>().Where(p => p.ClassB == null).Count ());
-		}
-	}
+            db.Insert(new Product
+            {
+                Name = "A",
+                Price = 20,
+            });
+
+            db.Insert(new Product
+            {
+                Name = "B",
+                Price = 10,
+            });
+
+            Assert.AreEqual(2, db.Table<Product>().Count());
+
+            var r = (from p in db.Table<Product>() where p.Price > 15 select p).ToList();
+            Assert.AreEqual(1, r.Count);
+            Assert.AreEqual("A", r[0].Name);
+        }
+
+        private TestDb CreateDb()
+        {
+            var db = new TestDb();
+            db.CreateTable<Product>();
+            db.CreateTable<Order>();
+            db.CreateTable<OrderLine>();
+            db.CreateTable<OrderHistory>();
+            return db;
+        }
+
+        public class Issue96_A
+        {
+            public string AddressLine { get; set; }
+
+            [Indexed]
+            public int? ClassB { get; set; }
+
+            [Indexed]
+            public int? ClassC { get; set; }
+
+            [AutoIncrement, PrimaryKey]
+            public int ID { get; set; }
+        }
+
+        public class Issue96_B
+        {
+            public string CustomerName { get; set; }
+
+            [AutoIncrement, PrimaryKey]
+            public int ID { get; set; }
+        }
+
+        public class Issue96_C
+        {
+            [AutoIncrement, PrimaryKey]
+            public int ID { get; set; }
+
+            public string SupplierName { get; set; }
+        }
+    }
 }
