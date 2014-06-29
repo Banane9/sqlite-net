@@ -134,6 +134,7 @@ namespace SQLite.Tests
             }
         }
 
+        [Serializable]
         public class TransactionTestException : Exception
         {
         }

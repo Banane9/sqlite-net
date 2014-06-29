@@ -2654,7 +2654,7 @@ namespace SQLite
                     throw NotNullConstraintViolationException.New(ex, map, obj);
                 }
 
-                throw ex;
+                throw;
             }
 
             if (rowsAffected > 0)
@@ -2839,6 +2839,7 @@ namespace SQLite
         }
     }
 
+    [Serializable]
     public class SQLiteException : Exception
     {
         protected SQLiteException(SQLite3.Result r, string message)
